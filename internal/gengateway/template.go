@@ -435,4 +435,25 @@ func Router(svc GatewayService) *mux.Router {
 
 	return r
 }`))
+
+	endpointsTemplate = template.Must(template.New("kit").Funcs(funcs).Parse(`
+type Endpointer interface {
+	Register(GatewayService) *Route
+	Make(GatewayService) endpoint.Endpoint
+	Encode(context.Context, http.ResponseWriter, interface{}) error
+	Decode(context.Context, *http.Request) (interface{}, error)
+}
+
+type Route struct {
+	Path    string
+	Handler http.Handler
+	Method string
+	Name   string
+}
+
+var Handlers []Endpointer
+
+func RegisterHandler(h Endpointer) {
+	Handlers = append(Handlers, h)
+}`))
 )
