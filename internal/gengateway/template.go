@@ -318,6 +318,35 @@ func applyRoutesTemplate(ps params) (string, error) {
 	return w.String(), nil
 }
 
+func applyEndpointsTemplate(ps params) (string, error) {
+	w := bytes.NewBuffer(nil)
+	ps.Imports = []descriptor.GoPackage{
+		{
+			Path: "context",
+		},
+		{
+			Path: "github.com/go-kit/kit/endpoint",
+		},
+		{
+			Path: "net/http",
+		},
+	}
+
+	if err := serviceHeaderTemplate.Execute(w, ps); err != nil {
+		return "", err
+	}
+
+	tp := trailerParams{
+		//Files: ps.Files,
+		UseRequestContext:  ps.UseRequestContext,
+		RegisterFuncSuffix: ps.RegisterFuncSuffix,
+	}
+	if err := endpointsTemplate.Execute(w, tp); err != nil {
+		return "", err
+	}
+	return w.String(), nil
+}
+
 func readModuleName() string {
 	file, err := os.Open("go.mod")
 	if err != nil {
@@ -434,5 +463,26 @@ func Router(svc GatewayService) *mux.Router {
 	r = ManualRouter(svc, r)
 
 	return r
+}`))
+
+	endpointsTemplate = template.Must(template.New("kit").Funcs(funcs).Parse(`
+type Endpointer interface {
+	Register(GatewayService) *Route
+	Make(GatewayService) endpoint.Endpoint
+	Encode(context.Context, http.ResponseWriter, interface{}) error
+	Decode(context.Context, *http.Request) (interface{}, error)
+}
+
+type Route struct {
+	Path    string
+	Handler http.Handler
+	Method string
+	Name   string
+}
+
+var Handlers []Endpointer
+
+func RegisterHandler(h Endpointer) {
+	Handlers = append(Handlers, h)
 }`))
 )
