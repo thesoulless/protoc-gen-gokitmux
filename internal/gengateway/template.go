@@ -318,6 +318,35 @@ func applyRoutesTemplate(ps params) (string, error) {
 	return w.String(), nil
 }
 
+func applyEndpointsTemplate(ps params) (string, error) {
+	w := bytes.NewBuffer(nil)
+	ps.Imports = []descriptor.GoPackage{
+		{
+			Path: "context",
+		},
+		{
+			Path: "github.com/go-kit/kit/endpoint",
+		},
+		{
+			Path: "net/http",
+		},
+	}
+
+	if err := serviceHeaderTemplate.Execute(w, ps); err != nil {
+		return "", err
+	}
+
+	tp := trailerParams{
+		//Files: ps.Files,
+		UseRequestContext:  ps.UseRequestContext,
+		RegisterFuncSuffix: ps.RegisterFuncSuffix,
+	}
+	if err := endpointsTemplate.Execute(w, tp); err != nil {
+		return "", err
+	}
+	return w.String(), nil
+}
+
 func readModuleName() string {
 	file, err := os.Open("go.mod")
 	if err != nil {
