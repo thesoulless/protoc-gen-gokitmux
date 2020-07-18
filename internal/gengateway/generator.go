@@ -157,6 +157,23 @@ func (g *generator) Generate(targets []*descriptor.File, p gen.Params) ([]*plugi
 	})
 	glog.V(1).Infof("Will emit %s", output)
 
+	code, err = g.generateEndpoints(p)
+	if err != nil {
+		return nil, err
+	}
+	formatted, err = format.Source([]byte(code))
+	if err != nil {
+		glog.Errorf("%v: %s", err, code)
+		return nil, err
+	}
+	base = p.OutputPath + "/" + "endpoints.gm"
+	output = fmt.Sprintf("%s.go", base)
+	files = append(files, &plugin.CodeGeneratorResponse_File{
+		Name:    proto.String(output),
+		Content: proto.String(string(formatted)),
+	})
+	glog.V(1).Infof("Will emit %s", output)
+
 	return files, nil
 }
 
@@ -268,6 +285,26 @@ func (g *generator) generateRouter(p gen.Params) (string, error) {
 		PackageName: 		p.PackageName,
 	}
 	return applyRoutesTemplate(params)
+}
+
+func (g *generator) generateEndpoints(p gen.Params) (string, error) {
+	pkgSeen := make(map[string]bool)
+	var imports []descriptor.GoPackage
+	for _, pkg := range g.baseImports {
+		pkgSeen[pkg.Path] = true
+		imports = append(imports, pkg)
+	}
+
+	params := params{
+		Imports:            imports,
+		UseRequestContext:  g.useRequestContext,
+		RegisterFuncSuffix: g.registerFuncSuffix,
+		AllowPatchFeature:  g.allowPatchFeature,
+		OutputPath:         p.OutputPath,
+		Metrics:            p.MetricsPackage,
+		PackageName: 		p.PackageName,
+	}
+	return applyEndpointsTemplate(params)
 }
 
 // addEnumPathParamImports handles adding import of enum path parameter go packages
