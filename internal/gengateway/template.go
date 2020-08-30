@@ -423,7 +423,10 @@ func init() {
 			e.Encode,
 			{{if $ErrorEncoder}}httptransport.ServerErrorEncoder({{$ErrorEncoder}}),{{end}}
 		)
-		{{$svc.GetName}}{{$.RegisterFuncSuffix}}Client := metrics.ForHandler({{$m.GetName}}{{$.RegisterFuncSuffix}}, "{{$m.GetName}}")
+		{{$svc.GetName}}{{$.RegisterFuncSuffix}}Client := metrics.ForHandler(
+			e.ForHandler({{$m.GetName}}{{$.RegisterFuncSuffix}}),
+			"{{$m.GetName}}",
+		)
 		
 		r := &Route{
 			Path: {{$b.PathTmpl.Template | printf "%q"}},
@@ -471,6 +474,7 @@ type Endpointer interface {
 	Make(GatewayService) endpoint.Endpoint
 	Encode(context.Context, http.ResponseWriter, interface{}) error
 	Decode(context.Context, *http.Request) (interface{}, error)
+	ForHandler(handler http.Handler) http.Handler
 }
 
 type Route struct {

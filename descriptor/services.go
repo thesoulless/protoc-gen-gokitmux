@@ -34,9 +34,6 @@ func (r *Registry) loadServices(file *File) error {
 			if opts != nil {
 				optsList = append(optsList, opts)
 			}
-			if len(optsList) == 0 {
-				glog.Warningf("No HttpRule found for method: %s.%s", svc.GetName(), md.GetName())
-			}
 			meth, err := r.newMethod(svc, md, optsList)
 			if err != nil {
 				return err
@@ -53,7 +50,11 @@ func (r *Registry) loadServices(file *File) error {
 	return nil
 }
 
-func (r *Registry) newMethod(svc *Service, md *descriptor.MethodDescriptorProto, optsList []*options.HttpRule) (*Method, error) {
+func (r *Registry) newMethod(
+	svc *Service,
+	md *descriptor.MethodDescriptorProto,
+	optsList []*options.HttpRule,
+) (*Method, error) {
 	requestType, err := r.LookupMsg(svc.File.GetPackage(), md.GetInputType())
 	if err != nil {
 		return nil, err
@@ -94,7 +95,10 @@ func (r *Registry) newMethod(svc *Service, md *descriptor.MethodDescriptorProto,
 			httpMethod = "DELETE"
 			pathTemplate = opts.GetDelete()
 			if opts.Body != "" && !r.allowDeleteBody {
-				return nil, fmt.Errorf("must not set request body when http method is DELETE except allow_delete_body option is true: %s", md.GetName())
+				return nil, fmt.Errorf(
+					"must not set request body when http method is DELETE except allow_delete_body option is true: %s",
+					md.GetName(),
+				)
 			}
 
 		case opts.GetPatch() != "":
@@ -162,7 +166,11 @@ func (r *Registry) newMethod(svc *Service, md *descriptor.MethodDescriptorProto,
 		}
 		for _, additional := range opts.GetAdditionalBindings() {
 			if len(additional.AdditionalBindings) > 0 {
-				return fmt.Errorf("additional_binding in additional_binding not allowed: %s.%s", svc.GetName(), meth.GetName())
+				return fmt.Errorf(
+					"additional_binding in additional_binding not allowed: %s.%s",
+					svc.GetName(),
+					meth.GetName(),
+				)
 			}
 			b, err := newBinding(additional, len(meth.Bindings))
 			if err != nil {
@@ -218,7 +226,13 @@ func (r *Registry) newParam(meth *Method, path string) (Parameter, error) {
 		if IsWellKnownType(*target.TypeName) {
 			glog.V(2).Infoln("found well known aggregate type:", target)
 		} else {
-			return Parameter{}, fmt.Errorf("aggregate type %s in parameter of %s.%s: %s", target.Type, meth.Service.GetName(), meth.GetName(), path)
+			return Parameter{}, fmt.Errorf(
+				"aggregate type %s in parameter of %s.%s: %s",
+				target.Type,
+				meth.Service.GetName(),
+				meth.GetName(),
+				path,
+			)
 		}
 	}
 	return Parameter{
