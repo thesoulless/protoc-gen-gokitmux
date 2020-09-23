@@ -110,10 +110,11 @@ func (g *generator) Generate(targets []*descriptor.File, p gen.Params) ([]*plugi
 			return nil, err
 		}
 		fileNames := strings.Split(file.GetName(), "/")
-		name := p.OutputPath + "/" + fileNames[len(fileNames) - 1]
+		name := fileNames[len(fileNames) - 1]
 		ext := filepath.Ext(name)
-		base := strings.TrimSuffix(name, ext) + ".gm"
-		output := fmt.Sprintf("%s.go", base)
+		name = strings.TrimSuffix(name, ext)
+		base := name + ".gm"
+		output := fmt.Sprintf("%s/%s/%s.go", p.OutputPath, name, base)
 		files = append(files, &plugin.CodeGeneratorResponse_File{
 			Name:    proto.String(output),
 			Content: proto.String(string(formatted)),
