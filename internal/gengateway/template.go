@@ -170,13 +170,18 @@ type trailerParams struct {
 }
 
 func applyTemplate(p param, reg *descriptor.Registry) (string, error) {
+	moduleName := readModuleName()
 	w := bytes.NewBuffer(nil)
-	p.Imports = []descriptor.GoPackage{}
-	p.Imports = append(p.Imports, descriptor.GoPackage{
-		Path:  "github.com/go-kit/kit/transport/http",
-		Name:  "http",
-		Alias: "httptransport",
-	})
+	p.Imports = []descriptor.GoPackage{
+		{
+			Path:  "github.com/go-kit/kit/transport/http",
+			Name:  "http",
+			Alias: "httptransport",
+		},
+		{
+			Path:  moduleName + "/" + p.PackageName,
+		},
+	}
 	if p.Metrics != "" {
 		p.Imports = append(p.Imports, descriptor.GoPackage{
 			Path: p.Metrics,
@@ -369,11 +374,11 @@ var (
 // source: {{.GetName}}
 
 /*
-Package {{.PackageName}} is a reverse proxy.
+Package {{.GoPkg.Name}} is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package {{.PackageName | printf "%s\n"}}
+package {{.GoPkg.Name | printf "%s\n"}}
 
 import (
 	{{range $i := .Imports}}{{if $i.Standard}}{{$i | printf "%s\n"}}{{end}}{{end}}
@@ -396,12 +401,13 @@ import (
 	kitTemplate = template.Must(template.New("kit").Funcs(funcs).Parse(`
 {{$UseRequestContext := .UseRequestContext}}
 {{$ErrorEncoder := .ErrorEncoder}}
+{{$PackageName := .PackageName}}
 func init() {
 	{{range $i, $svc := .Services}}
 	{{range $j, $m := $svc.Methods}}
 	{{range $k, $b := $m.Bindings}}
 	h{{$i}}{{$j}}{{$k}} := &{{$m.GetName}}{}
-	RegisterHandler(h{{$i}}{{$j}}{{$k}})
+	{{$PackageName}}.RegisterHandler(h{{$i}}{{$j}}{{$k}})
 	{{end}}
 	{{end}}
 	{{end}}
@@ -416,7 +422,7 @@ func init() {
 {{range $svc := .Services}}
 	{{range $m := $svc.Methods}}
 	{{range $b := $m.Bindings}}
-	func (e *{{$m.GetName}}) Register(svc GatewayService) *Route {
+	func (e *{{$m.GetName}}) Register(svc {{$PackageName}}.GatewayService) *{{$PackageName}}.Route {
 		{{$m.GetName}}{{$.RegisterFuncSuffix}} := httptransport.NewServer(
 			e.Make(svc),
 			e.Decode,
@@ -428,7 +434,7 @@ func init() {
 			"{{$m.GetName}}",
 		)
 		
-		r := &Route{
+		r := &{{$PackageName}}.Route{
 			Path: {{$b.PathTmpl.Template | printf "%q"}},
 			Handler: {{$svc.GetName}}{{$.RegisterFuncSuffix}}Client,
 			Method: {{$b.HTTPMethod | printf "%q"}},
