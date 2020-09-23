@@ -27,12 +27,12 @@ const (
 )
 
 type generator struct {
-	reg                *descriptor.Registry
 	baseImports        []descriptor.GoPackage
-	useRequestContext  bool
 	registerFuncSuffix string
-	pathType           pathType
 	modulePath         string
+	reg                *descriptor.Registry
+	pathType           pathType
+	useRequestContext  bool
 	allowPatchFeature  bool
 }
 
