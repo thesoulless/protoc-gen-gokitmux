@@ -303,11 +303,17 @@ func applyServiceTemplate(ps params, reg *descriptor.Registry) (string, error) {
 }
 
 func applyRoutesTemplate(ps params) (string, error) {
+	moduleName := readModuleName()
 	w := bytes.NewBuffer(nil)
 	ps.Imports = []descriptor.GoPackage{}
 	ps.Imports = append(ps.Imports, descriptor.GoPackage{
 		Path:  "github.com/gorilla/mux",
 	})
+	for _, f := range ps.Files {
+		ps.Imports = append(ps.Imports, descriptor.GoPackage{
+			Path: fmt.Sprintf("%s/%s/%s", moduleName, ps.PackageName, *f.Package),
+		})
+	}
 	if err := serviceHeaderTemplate.Execute(w, ps); err != nil {
 		return "", err
 	}
@@ -402,7 +408,7 @@ import (
 {{$UseRequestContext := .UseRequestContext}}
 {{$ErrorEncoder := .ErrorEncoder}}
 {{$PackageName := .PackageName}}
-func init() {
+func New() {
 	{{range $i, $svc := .Services}}
 	{{range $j, $m := $svc.Methods}}
 	{{range $k, $b := $m.Bindings}}
@@ -459,6 +465,9 @@ type GatewayService interface { {{range $f := .Files}}
 	routesTemplate = template.Must(template.New("kit").Funcs(funcs).Parse(`
 func Router(svc GatewayService) *mux.Router {
 	r := mux.NewRouter()
+
+	{{range $f := .Files}}
+	{{$f.Package}}.New(){{end}}
 
 	for _, h := range Handlers {
 		route := h.Register(svc)

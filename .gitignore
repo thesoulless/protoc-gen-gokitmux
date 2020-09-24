@@ -22,4 +22,5 @@ gen
 client/
 pb/
 services/
-
+internals/
+endpoints/
