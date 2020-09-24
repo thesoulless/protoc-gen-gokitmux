@@ -141,7 +141,7 @@ func (g *generator) Generate(targets []*descriptor.File, p gen.Params) ([]*plugi
 		glog.V(1).Infof("Will emit %s", output)
 	}
 
-	code, err := g.generateRouter(p)
+	code, err := g.generateRouter(targets, p)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (g *generator) generateService(files []*descriptor.File, p gen.Params) (str
 	return applyServiceTemplate(params, g.reg)
 }
 
-func (g *generator) generateRouter(p gen.Params) (string, error) {
+func (g *generator) generateRouter(files []*descriptor.File, p gen.Params) (string, error) {
 	pkgSeen := make(map[string]bool)
 	var imports []descriptor.GoPackage
 	for _, pkg := range g.baseImports {
@@ -276,7 +276,7 @@ func (g *generator) generateRouter(p gen.Params) (string, error) {
 	}
 
 	params := params{
-		//Files:               files,
+		Files:               files,
 		Imports:            imports,
 		UseRequestContext:  g.useRequestContext,
 		RegisterFuncSuffix: g.registerFuncSuffix,
