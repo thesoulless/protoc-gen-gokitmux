@@ -303,14 +303,10 @@ func applyServiceTemplate(ps params, reg *descriptor.Registry) (string, error) {
 }
 
 func applyRoutesTemplate(ps params) (string, error) {
-	moduleName := readModuleName()
 	w := bytes.NewBuffer(nil)
 	ps.Imports = []descriptor.GoPackage{
 		{
 			Path:  "github.com/gorilla/mux",
-		},
-		{
-			Path:  fmt.Sprintf("%s/%s/%s", moduleName, ps.PackageName, "muxkit"),
 		},
 	}
 	if err := serviceHeaderTemplate.Execute(w, ps); err != nil {
