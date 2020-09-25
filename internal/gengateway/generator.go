@@ -158,6 +158,23 @@ func (g *generator) Generate(targets []*descriptor.File, p gen.Params) ([]*plugi
 	})
 	glog.V(1).Infof("Will emit %s", output)
 
+	code, err = g.generateMuxkit(targets, p)
+	if err != nil {
+		return nil, err
+	}
+	formatted, err = format.Source([]byte(code))
+	if err != nil {
+		glog.Errorf("%v: %s", err, code)
+		return nil, err
+	}
+	base = fmt.Sprintf("%s/%s/%s", p.OutputPath, "muxkit", "muxkit.gm")
+	output = fmt.Sprintf("%s.go", base)
+	files = append(files, &plugin.CodeGeneratorResponse_File{
+		Name:    proto.String(output),
+		Content: proto.String(string(formatted)),
+	})
+	glog.V(1).Infof("Will emit %s", output)
+
 	code, err = g.generateEndpoints(p)
 	if err != nil {
 		return nil, err
@@ -286,6 +303,20 @@ func (g *generator) generateRouter(files []*descriptor.File, p gen.Params) (stri
 		PackageName: 		p.PackageName,
 	}
 	return applyRoutesTemplate(params)
+}
+
+func (g *generator) generateMuxkit(files []*descriptor.File, p gen.Params) (string, error) {
+	params := params{
+		Files:               files,
+		//Imports:            imports,
+		UseRequestContext:  g.useRequestContext,
+		RegisterFuncSuffix: g.registerFuncSuffix,
+		AllowPatchFeature:  g.allowPatchFeature,
+		OutputPath:         p.OutputPath,
+		Metrics:            p.MetricsPackage,
+		PackageName: 		p.PackageName,
+	}
+	return applyMuxkitTemplate(params)
 }
 
 func (g *generator) generateEndpoints(p gen.Params) (string, error) {
