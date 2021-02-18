@@ -18,31 +18,25 @@ import (
 type param struct {
 	*descriptor.File
 	Imports            []descriptor.GoPackage
-	UseRequestContext  bool
 	RegisterFuncSuffix string
 	AllowPatchFeature  bool
-	OutputPath         string
 	Metrics            string
 	ErrorEncoder       string
 	PackageName        string
 }
 
 type params struct {
-	Files              []*descriptor.File
-	Imports            []descriptor.GoPackage
-	UseRequestContext  bool
-	RegisterFuncSuffix string
-	AllowPatchFeature  bool
-	OutputPath         string
-	Metrics            string
-	PackageName        string
+	Files       []*descriptor.File
+	Imports     []descriptor.GoPackage
+	Metrics     string
+	PackageName string
 }
 
 type binding struct {
 	*descriptor.Binding
 	Registry          *descriptor.Registry
 	AllowPatchFeature bool
-	Ed string
+	Ed                string
 }
 
 // GetBodyFieldPath returns the binding body's fieldpath.
@@ -162,14 +156,12 @@ func (f queryParamFilter) String() string {
 type trailerParams struct {
 	Files              []*descriptor.File
 	Services           []*descriptor.Service
-	UseRequestContext  bool
-	RegisterFuncSuffix string
-	AssumeColonVerb    bool
 	ErrorEncoder       string
 	PackageName        string
+	RegisterFuncSuffix string
 }
 
-func applyTemplate(p param, reg *descriptor.Registry) (string, error) {
+func applyTemplate(p param) (string, error) {
 	moduleName := readModuleName()
 	w := bytes.NewBuffer(nil)
 	p.Imports = []descriptor.GoPackage{
@@ -179,7 +171,7 @@ func applyTemplate(p param, reg *descriptor.Registry) (string, error) {
 			Alias: "httptransport",
 		},
 		{
-			Path:  moduleName + "/" + p.PackageName,
+			Path: moduleName + "/" + p.PackageName,
 		},
 	}
 	if p.Metrics != "" {
@@ -187,7 +179,6 @@ func applyTemplate(p param, reg *descriptor.Registry) (string, error) {
 			Path: p.Metrics,
 		})
 	}
-	//package {{.GoPkg.Name}}
 
 	if err := kitHeaderTemplate.Execute(w, p); err != nil {
 		return "", err
@@ -218,85 +209,13 @@ func applyTemplate(p param, reg *descriptor.Registry) (string, error) {
 		return "", errNoTargetService
 	}
 
-	assumeColonVerb := true
-	if reg != nil {
-		assumeColonVerb = !reg.GetAllowColonFinalSegments()
-	}
 	tp := trailerParams{
 		Services:           targetServices,
-		UseRequestContext:  p.UseRequestContext,
-		RegisterFuncSuffix: p.RegisterFuncSuffix,
-		AssumeColonVerb:    assumeColonVerb,
 		ErrorEncoder:       p.ErrorEncoder,
 		PackageName:        p.PackageName,
+		RegisterFuncSuffix: p.RegisterFuncSuffix,
 	}
 	if err := kitTemplate.Execute(w, tp); err != nil {
-			return "", err
-		}
-	return w.String(), nil
-}
-
-func applyServiceTemplate(ps params, reg *descriptor.Registry) (string, error) {
-	w := bytes.NewBuffer(nil)
-	ps.Imports = []descriptor.GoPackage{}
-	moduleName := readModuleName()
-	var targetServices []*descriptor.Service
-
-	for _, p := range ps.Files {
-		for _, msg := range p.Messages {
-			msgName := casing.Camel(*msg.Name)
-			msg.Name = &msgName
-		}
-	}
-
-	for _, p := range ps.Files {
-		for _, svc := range p.Services {
-		var methodWithBindingsSeen bool
-		svcName := casing.Camel(*svc.Name)
-		svc.Name = &svcName
-		fileName := *svc.File.Name
-		packagePath := fileName[0:strings.LastIndex(*svc.File.Name, "/")]
-		importName := moduleName + "/" + packagePath
-		ps.Imports = append(ps.Imports, descriptor.GoPackage{
-			Path: importName,
-			Name: fileName[strings.LastIndex(*svc.File.Name, "/") : strings.LastIndex(*svc.File.Name, ".")-1],
-		})
-		for _, meth := range svc.Methods {
-			glog.V(2).Infof("Processing %s.%s", svc.GetName(), meth.GetName())
-			methName := casing.Camel(*meth.Name)
-			meth.Name = &methName
-			for _, _ = range meth.Bindings {
-				methodWithBindingsSeen = true
-			}
-		}
-		if methodWithBindingsSeen {
-			targetServices = append(targetServices, svc)
-		}
-	}
-	}
-
-	if len(targetServices) == 0 {
-		return "", errNoTargetService
-	}
-	ps.Imports = append(ps.Imports, descriptor.GoPackage{
-		Path:  "context",
-	})
-	if err := serviceHeaderTemplate.Execute(w, ps); err != nil {
-		return "", err
-	}
-
-	assumeColonVerb := true
-	if reg != nil {
-		assumeColonVerb = !reg.GetAllowColonFinalSegments()
-	}
-	tp := trailerParams{
-		Files: ps.Files,
-		Services:           targetServices,
-		UseRequestContext:  ps.UseRequestContext,
-		RegisterFuncSuffix: ps.RegisterFuncSuffix,
-		AssumeColonVerb:    assumeColonVerb,
-	}
-	if err := serviceTemplate.Execute(w, tp); err != nil {
 		return "", err
 	}
 	return w.String(), nil
@@ -306,7 +225,7 @@ func applyRoutesTemplate(ps params) (string, error) {
 	w := bytes.NewBuffer(nil)
 	ps.Imports = []descriptor.GoPackage{
 		{
-			Path:  "github.com/gorilla/mux",
+			Path: "github.com/gorilla/mux",
 		},
 	}
 	if err := serviceHeaderTemplate.Execute(w, ps); err != nil {
@@ -315,8 +234,6 @@ func applyRoutesTemplate(ps params) (string, error) {
 
 	tp := trailerParams{
 		Files: ps.Files,
-		UseRequestContext:  ps.UseRequestContext,
-		RegisterFuncSuffix: ps.RegisterFuncSuffix,
 	}
 	if err := routesTemplate.Execute(w, tp); err != nil {
 		return "", err
@@ -338,8 +255,6 @@ func applyMuxkitTemplate(ps params) (string, error) {
 
 	tp := trailerParams{
 		Files: ps.Files,
-		UseRequestContext:  ps.UseRequestContext,
-		RegisterFuncSuffix: ps.RegisterFuncSuffix,
 	}
 	if err := muxkitTemplate.Execute(w, tp); err != nil {
 		return "", err
@@ -365,11 +280,7 @@ func applyEndpointsTemplate(ps params) (string, error) {
 		return "", err
 	}
 
-	tp := trailerParams{
-		//Files: ps.Files,
-		UseRequestContext:  ps.UseRequestContext,
-		RegisterFuncSuffix: ps.RegisterFuncSuffix,
-	}
+	tp := trailerParams{}
 	if err := endpointsTemplate.Execute(w, tp); err != nil {
 		return "", err
 	}
@@ -391,7 +302,7 @@ func readModuleName() string {
 }
 
 var (
-	funcs     = template.FuncMap{"ToLower": strings.ToLower}
+	funcs = template.FuncMap{"ToLower": strings.ToLower}
 
 	kitHeaderTemplate = template.Must(template.New("header").Parse(`
 // Code generated by protoc-gen-gokitmux. DO NOT EDIT.
@@ -435,7 +346,6 @@ import (
 `))
 
 	kitTemplate = template.Must(template.New("kit").Funcs(funcs).Parse(`
-{{$UseRequestContext := .UseRequestContext}}
 {{$ErrorEncoder := .ErrorEncoder}}
 {{$PackageName := .PackageName}}
 func New() {
