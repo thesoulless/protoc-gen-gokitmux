@@ -1,20 +1,19 @@
 package generator
 
 import (
-	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
 	"github.com/thesoulless/protoc-gen-gokitmux/descriptor"
+	"google.golang.org/protobuf/types/pluginpb"
 )
 
 type Params struct {
-	GenerateService bool
-	MetricsPackage  string
-	OutputPath      string
-	ErrorEncoder    string
-	PackageName     string
+	GenerateService    bool
+	MetricsPackage     string
+	ErrorEncoder       string
+	PackageName        string
+	RegisterFuncSuffix string
 }
 
 // Generator is an abstraction of code generators.
 type Generator interface {
-	// Generate generates output files from input .proto files.
-	Generate(targets []*descriptor.File, p Params) ([]*plugin.CodeGeneratorResponse_File, error)
+	Generate(targets []*descriptor.File, p Params) ([]*pluginpb.CodeGeneratorResponse_File, error)
 }
